@@ -16,7 +16,7 @@ const EmptyBandwidth = {
 class App extends Component {
   constructor (props) {
     super(props)
-    this.state = { peers: [], sort: { field: 'RateOut', direction: 'Desc' }, loading: true }
+    this.state = { peers: [], sort: { field: 'rateOut', direction: -1 }, loading: true }
     this.onFieldClick = this.onFieldClick.bind(this)
   }
 
@@ -25,30 +25,17 @@ class App extends Component {
     const bw = bandwidth(ipfs)
     const abortableSwarm = this._abortableSwarm = Abortable()
     const abortableBw = this._abortableBw = Abortable()
+    const peers = {}
 
     pull(
       swarm(ipfs),
       abortableSwarm,
       pull.drain(({ event, data }) => {
         if (event === 'add') {
-          // Add peer to our peers list
-          this.setState(({ peers }) => ({
-            peers: {
-              ...peers,
-              [data.id]: { id: data.id, bw: EmptyBandwidth }
-            },
-            loading: false
-          }))
-          // Start watching the peer for bandwidth changes
+          peers[data.id] = { id: data.id, bw: EmptyBandwidth }
           bw.watch(data.id)
         } else if (event === 'remove') {
-          // Remove peer from our peers list
-          this.setState(({ peers }) => {
-            peers = { ...peers }
-            delete peers[data.id]
-            return { peers }
-          })
-          // Stop watching the peer for bandwidth changes
+          delete peers[data.id]
           bw.unwatch(data.id)
         }
       })
@@ -57,85 +44,38 @@ class App extends Component {
     pull(
       bw,
       abortableBw,
-      pull.drain((res) => {
-        const { id, bw } = res
-        // Update the bandwidth data for this peer
-        this.setState(({ peers }) => {
-          peers = { ...peers }
-          peers[id] = { ...peers[id], id, bw }
-          return { peers }
-        })
-      })
+      pull.drain(({ id, bw }) => { peers[id] = { id, bw } })
     )
+
+    const updatePeerState = () => this.setState({ peers: { ...peers }, loading: false })
+    this._interval = setInterval(updatePeerState, this.props.refreshRate || 2000)
   }
 
-  sortByRateInAsc (a, b) {
-    if (a.bw.rateIn.gt(b.bw.rateIn)) return 1
-    if (a.bw.rateIn.lt(b.bw.rateIn)) return -1
-    return 0
-  }
-
-  sortByRateInDesc (a, b) {
-    if (a.bw.rateIn.gt(b.bw.rateIn)) return -1
-    if (a.bw.rateIn.lt(b.bw.rateIn)) return 1
-    return 0
-  }
-
-  sortByRateOutAsc (a, b) {
-    if (a.bw.rateOut.gt(b.bw.rateOut)) return 1
-    if (a.bw.rateOut.lt(b.bw.rateOut)) return -1
-    return 0
-  }
-
-  sortByRateOutDesc (a, b) {
-    if (a.bw.rateOut.gt(b.bw.rateOut)) return -1
-    if (a.bw.rateOut.lt(b.bw.rateOut)) return 1
-    return 0
-  }
-
-  sortByTotalInAsc (a, b) {
-    if (a.bw.totalIn.gt(b.bw.totalIn)) return 1
-    if (a.bw.totalIn.lt(b.bw.totalIn)) return -1
-    return 0
-  }
-
-  sortByTotalInDesc (a, b) {
-    if (a.bw.totalIn.gt(b.bw.totalIn)) return -1
-    if (a.bw.totalIn.lt(b.bw.totalIn)) return 1
-    return 0
-  }
-
-  sortByTotalOutAsc (a, b) {
-    if (a.bw.totalOut.gt(b.bw.totalOut)) return 1
-    if (a.bw.totalOut.lt(b.bw.totalOut)) return -1
-    return 0
-  }
-
-  sortByTotalOutDesc (a, b) {
-    if (a.bw.totalOut.gt(b.bw.totalOut)) return -1
-    if (a.bw.totalOut.lt(b.bw.totalOut)) return 1
-    return 0
+  getSorter ({ field, direction }) {
+    return (a, b) => {
+      if (a.bw[field].gt(b.bw[field])) return direction
+      if (a.bw[field].lt(b.bw[field])) return -direction
+      return 0
+    }
   }
 
   onFieldClick (e) {
     this.setState(({ sort }) => {
       const field = e.currentTarget.getAttribute('data-field')
-      const direction = sort.field === field
-        ? (sort.direction === 'Desc' ? 'Asc' : 'Desc')
-        : 'Desc'
+      const direction = sort.field === field ? -sort.direction : -1
       return { sort: { field, direction } }
     })
   }
 
   componentWillUnmount () {
+    clearInterval(this._interval)
     this._abortableSwarm.abort()
     this._abortableBw.abort()
   }
 
   render () {
     const { peers, sort, loading } = this.state
-    const sortFn = this[`sortBy${sort.field}${sort.direction}`]
-    const sortedPeers = Object.values(peers).sort(sortFn)
+    const sortedPeers = Object.values(peers).sort(this.getSorter(sort))
 
     if (loading) {
       return <p className='sans-serif f2 ma0 pv1 ph2'>Loading...</p>
@@ -145,10 +85,10 @@ class App extends Component {
       <table className='sans-serif'>
         <tr className='tl'>
           <th className='pv1 ph2'><span className='v-mid'>ID</span></th>
-          <SortableTableHeader field='RateIn' label='Rate In' sort={sort} onClick={this.onFieldClick} />
-          <SortableTableHeader field='RateOut' label='Rate Out' sort={sort} onClick={this.onFieldClick} />
-          <SortableTableHeader field='TotalIn' label='Total In' sort={sort} onClick={this.onFieldClick} />
-          <SortableTableHeader field='TotalOut' label='Total Out' sort={sort} onClick={this.onFieldClick} />
+          <SortableTableHeader field='rateIn' label='Rate In' sort={sort} onClick={this.onFieldClick} />
+          <SortableTableHeader field='rateOut' label='Rate Out' sort={sort} onClick={this.onFieldClick} />
+          <SortableTableHeader field='totalIn' label='Total In' sort={sort} onClick={this.onFieldClick} />
+          <SortableTableHeader field='totalOut' label='Total Out' sort={sort} onClick={this.onFieldClick} />
         </tr>
         {sortedPeers.map(p => (
           <tr key={p.id}>
@@ -175,7 +115,7 @@ function SortableTableHeader ({ field, label, sort, onClick }) {
 
 function SortArrow ({ field, sortField, direction }) {
   if (field !== sortField) return null
-  const src = `https://icon.now.sh/triangle${direction === 'Asc' ? 'Up' : 'Down'}`
+  const src = `https://icon.now.sh/triangle${direction === 1 ? 'Up' : 'Down'}`
   return <img src={src} className='v-mid' />
 }
 

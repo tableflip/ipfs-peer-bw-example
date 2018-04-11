@@ -1,6 +1,5 @@
 import pull from 'pull-stream'
-import many from 'pull-many'
-import Abortable from 'pull-abortable'
+import queue from 'async.queue'
 
 export function swarm (ipfs, opts) {
   opts = opts || {}
@@ -54,64 +53,58 @@ export function swarm (ipfs, opts) {
 export function bandwidth (ipfs, opts) {
   opts = opts || {}
   opts.interval = opts.interval || 5000
+  opts.concurrency = opts.concurrency || 5
 
-  let peerIds = []
-  let first = true
+  let watches = {}
+  let bwData = []
+  let onData
 
-  const source = (end, cb) => {
-    if (end) return cb(end)
+  let q = queue((id, cb) => {
+    ipfs.stats.bw({ peer: id }, (err, bw) => {
+      if (err) return cb(err)
 
-    const getBandwidth = async () => {
-      const ids = Array.from(peerIds)
-      let results
+      // Peer was unwatched while in queue?
+      if (!watches[id]) return cb()
 
-      try {
-        results = await Promise.all(ids.map(id => ipfs.stats.bw({ peer: id })))
-      } catch (err) {
-        return cb(err)
+      bwData.push({ id, bw })
+
+      if (onData) {
+        const onDataCallback = onData
+        onData = null
+        onDataCallback()
       }
 
-      cb(null, results.map((bw, i) => ({ id: ids[i], bw })))
+      // Deprioritise peers not transferring data
+      const interval = bw.rateIn.eq(0) && bw.rateOut.eq(0)
+        ? opts.interval * 2
+        : opts.interval
+
+      watches[id] = setTimeout(() => q.push(id), interval)
+      cb()
+    })
+  }, opts.concurrency)
+
+  const source = (end, cb) => {
+    if (end) {
+      q.kill()
+      Object.keys(watches).forEach(source.unwatch)
+      return cb(end)
     }
 
-    if (first) {
-      first = false
-      return getBandwidth()
-    }
-
-    setTimeout(getBandwidth, opts.interval)
+    if (bwData.length) return cb(null, bwData.shift())
+    onData = () => cb(null, bwData.shift())
   }
 
-  const stream = pull(source, pull.flatten())
-
-  stream.watch = id => peerIds.push(id)
-  stream.unwatch = id => {
-    peerIds = peerIds.filter(peerId => peerId !== id)
+  source.watch = id => {
+    if (watches[id]) return console.warn('Already watching', id)
+    watches[id] = setTimeout(() => q.push(id))
   }
 
-  return stream
-}
-
-export function bandwidth0 (ipfs, opts) {
-  const m = many()
-  const abortables = {}
-
-  function bwPullStream (peer) {
-    abortables[peer] = Abortable()
-    return pull(
-      ipfs.stats.bwPullStream({ peer, poll: true }),
-      pull.map(bw => ({ id: peer, bw })),
-      abortables[peer]
-    )
+  source.unwatch = id => {
+    if (!watches[id]) return
+    clearTimeout(watches[id])
+    delete watches[id]
   }
 
-  m.watch = peer => m.add(bwPullStream(peer))
-
-  m.unwatch = peer => {
-    if (!abortables[peer]) return
-    abortables[peer].abort()
-    delete abortables[peer]
-  }
-
-  return m
+  return source
 }
