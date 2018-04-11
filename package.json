@@ -1,0 +1,47 @@
+{
+  "name": "ipfs-peer-bw-example",
+  "version": "0.0.0",
+  "description": "A list of peers eating your bandwidth",
+  "main": "index.js",
+  "scripts": {
+    "build": "run-s build:*",
+    "build:html": "mkdir -p dist && cp src/index.html dist/index.html",
+    "build:js": "webpack",
+    "build:minify": "uglifyjs dist/bundle.js -c -m -o dist/bundle.js",
+    "watch": "run-p watch:*",
+    "watch:html": "cp src/index.html dist/index.html",
+    "watch:js": "webpack --watch",
+    "watch:serve": "webpack-serve --content dist",
+    "test": "standard"
+  },
+  "keywords": [
+    "ipfs",
+    "bandwidth",
+    "peer",
+    "p2p"
+  ],
+  "author": "Alan Shaw",
+  "license": "MIT",
+  "dependencies": {
+    "preact": "^8.2.7",
+    "pull-abortable": "^4.1.1",
+    "pull-flatmap": "0.0.1",
+    "pull-many": "^1.0.8",
+    "pull-stream": "^3.6.7",
+    "window.ipfs-fallback": "^1.0.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.0.0-beta.44",
+    "@babel/plugin-proposal-object-rest-spread": "^7.0.0-beta.44",
+    "@babel/plugin-transform-react-jsx": "^7.0.0-beta.44",
+    "@babel/preset-env": "^7.0.0-beta.44",
+    "babel-loader": "^8.0.0-beta.2",
+    "babel-polyfill": "^6.26.0",
+    "npm-run-all": "^4.1.2",
+    "standard": "^11.0.1",
+    "uglify-es": "^3.3.9",
+    "webpack": "^4.5.0",
+    "webpack-cli": "^2.0.14",
+    "webpack-serve": "^0.3.1"
+  }
+}
