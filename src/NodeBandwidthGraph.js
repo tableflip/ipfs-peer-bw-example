@@ -29,6 +29,8 @@ export default class NodeBandwidthGraph extends Component {
 
           return { bw: nextBw, chartData: chartData.concat({ x: new Date(), y: total }).slice(-1000) }
         })
+      }, err => {
+        if (err) this.setState({ err })
       })
     )
   }
@@ -38,7 +40,15 @@ export default class NodeBandwidthGraph extends Component {
   }
 
   render () {
-    const { chartData } = this.state
+    const { chartData, err } = this.state
+
+    if (err) {
+      return (
+        <div className='border-red bg-red-muted pa3'>
+          <p className='ma0 white'>{err.message}</p>
+        </div>
+      )
+    }
 
     if (chartData.length < 2) {
       return <p className='sans-serif f3 ma0 pv1 ph2 tc'>Loading...</p>

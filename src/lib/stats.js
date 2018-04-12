@@ -60,7 +60,10 @@ export function nodeBandwidth (ipfs, opts) {
   const source = (end, cb) => {
     if (end) return cb(end)
 
-    const getBandwidth = () => ipfs.stats.bw(cb)
+    const getBandwidth = () => {
+      if (!ipfs.stats.bw) return cb(new Error('Bandwidth stats are not yet available in js-ipfs. Install the IPFS Companion web extension and use an external go-ipfs daemon.'))
+      ipfs.stats.bw(cb)
+    }
 
     if (first) {
       first = false
