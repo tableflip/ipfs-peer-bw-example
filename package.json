@@ -29,8 +29,10 @@
   "license": "MIT",
   "dependencies": {
     "async.queue": "^0.5.2",
+    "chart.js": "^2.7.2",
     "ipfs-css": "^0.3.0",
     "preact": "^8.2.7",
+    "preact-chartjs-2": "^1.0.3",
     "pull-abortable": "^4.1.1",
     "pull-stream": "^3.6.7",
     "tachyons": "^4.9.1",
