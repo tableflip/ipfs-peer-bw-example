@@ -2,6 +2,7 @@
 import { h, Component } from 'preact'
 import pull from 'pull-stream'
 import Abortable from 'pull-abortable'
+import bytes from 'bigbytes'
 import { swarmPeers, peerBandwidth, EmptyBandwidth } from './lib/stats'
 
 export default class PeerBandwidthTable extends Component {
@@ -92,10 +93,10 @@ export default class PeerBandwidthTable extends Component {
           {visiblePeers.map((p, i) => (
             <tr key={p.id} className={i % 2 ? 'bg-snow-muted' : ''}>
               <td className='pv2 ph3 monospace'>{p.id}</td>
-              <td className='pv2 ph3'>{p.bw.rateIn.toFixed(0)}</td>
-              <td className='pv2 ph3'>{p.bw.rateOut.toFixed(0)}</td>
-              <td className='pv2 ph3'>{p.bw.totalIn.toFixed(0)}</td>
-              <td className='pv2 ph3'>{p.bw.totalOut.toFixed(0)}</td>
+              <td className='pv2 ph3'>{bytes(p.bw.rateIn)}</td>
+              <td className='pv2 ph3'>{bytes(p.bw.rateOut)}</td>
+              <td className='pv2 ph3'>{bytes(p.bw.totalIn)}</td>
+              <td className='pv2 ph3'>{bytes(p.bw.totalOut)}</td>
             </tr>
           ))}
         </table>
