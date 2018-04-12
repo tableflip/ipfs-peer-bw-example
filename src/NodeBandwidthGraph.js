@@ -3,6 +3,7 @@ import { h, Component } from 'preact'
 import pull from 'pull-stream'
 import Abortable from 'pull-abortable'
 import { Line } from 'preact-chartjs-2'
+import bytes from 'bigbytes'
 import { nodeBandwidth, EmptyBandwidth } from './lib/stats'
 
 export default class NodeBandwidthGraph extends Component {
@@ -55,7 +56,11 @@ export default class NodeBandwidthGraph extends Component {
       tooltips: { mode: 'nearest' },
       scales: {
         xAxes: [{ type: 'time' }],
-        yAxes: [{ tics: { min: 0 } }]
+        yAxes: [{
+          ticks: {
+            callback: v => bytes(v, { decimalPlaces: 0 }) + '/s'
+          }
+        }]
       },
       legend: {
         display: true,

@@ -93,10 +93,10 @@ export default class PeerBandwidthTable extends Component {
           {visiblePeers.map((p, i) => (
             <tr key={p.id} className={i % 2 ? 'bg-snow-muted' : ''}>
               <td className='pv2 ph3 monospace'>{p.id}</td>
-              <td className='pv2 ph3'>{bytes(p.bw.rateIn)}</td>
-              <td className='pv2 ph3'>{bytes(p.bw.rateOut)}</td>
-              <td className='pv2 ph3'>{bytes(p.bw.totalIn)}</td>
-              <td className='pv2 ph3'>{bytes(p.bw.totalOut)}</td>
+              <td className='pv2 ph3'>{bytes(p.bw.rateIn, { decimalPlaces: 0 })}/s</td>
+              <td className='pv2 ph3'>{bytes(p.bw.rateOut, { decimalPlaces: 0 })}/s</td>
+              <td className='pv2 ph3'>{bytes(p.bw.totalIn, { decimalPlaces: 0 })}</td>
+              <td className='pv2 ph3'>{bytes(p.bw.totalOut, { decimalPlaces: 0 })}</td>
             </tr>
           ))}
         </table>
