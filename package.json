@@ -5,11 +5,16 @@
   "main": "index.js",
   "scripts": {
     "build": "run-s build:*",
-    "build:html": "mkdir -p dist && cp src/index.html dist/index.html",
+    "build:copy": "run-p build:copy:*",
+    "build:copy:html": "shx mkdir -p dist && shx cp src/index.html dist/index.html",
+    "build:copy:ipfs-css": "run-p build:copy:ipfs-css:*",
+    "build:copy:ipfs-css:css": "shx mkdir -p dist && shx cp node_modules/ipfs-css/ipfs.css dist",
+    "build:copy:ipfs-css:fonts": "shx mkdir -p dist/fonts && shx cp node_modules/ipfs-css/fonts/* dist/fonts",
+    "build:copy:tachyons": "shx mkdir -p dist && shx cp node_modules/tachyons/css/tachyons.css dist",
     "build:js": "webpack",
     "build:minify": "uglifyjs dist/bundle.js -c -m -o dist/bundle.js",
     "watch": "run-p watch:*",
-    "watch:html": "cp src/index.html dist/index.html",
+    "watch:copy": "run-s build:copy",
     "watch:js": "webpack --watch",
     "watch:serve": "webpack-serve --content dist",
     "test": "standard"
@@ -24,10 +29,11 @@
   "license": "MIT",
   "dependencies": {
     "async.queue": "^0.5.2",
+    "ipfs-css": "^0.3.0",
     "preact": "^8.2.7",
     "pull-abortable": "^4.1.1",
-    "pull-flatmap": "0.0.1",
     "pull-stream": "^3.6.7",
+    "tachyons": "^4.9.1",
     "window.ipfs-fallback": "^1.0.0"
   },
   "devDependencies": {
@@ -38,6 +44,7 @@
     "babel-loader": "^8.0.0-beta.2",
     "babel-polyfill": "^6.26.0",
     "npm-run-all": "^4.1.2",
+    "shx": "^0.2.2",
     "standard": "^11.0.1",
     "uglify-es": "^3.3.9",
     "webpack": "^4.5.0",

@@ -4,7 +4,7 @@ import getIpfs from 'window.ipfs-fallback'
 import pull from 'pull-stream'
 import Abortable from 'pull-abortable'
 import Big from 'big.js'
-import { swarm, bandwidth } from './swarm'
+import { nodeBandwidth, swarmPeers, peerBandwidth } from './stats'
 
 const EmptyBandwidth = {
   rateIn: Big(0),
@@ -22,28 +22,36 @@ class App extends Component {
 
   async componentWillMount () {
     const ipfs = this._ipfs = await getIpfs()
-    const bw = bandwidth(ipfs)
-    const abortableSwarm = this._abortableSwarm = Abortable()
-    const abortableBw = this._abortableBw = Abortable()
     const peers = {}
+    const peerBw = peerBandwidth(ipfs)
+
+    this._abortableSwarmPeers = Abortable()
+    this._abortableNodeBw = Abortable()
+    this._abortablePeerBw = Abortable()
 
     pull(
-      swarm(ipfs),
-      abortableSwarm,
+      swarmPeers(ipfs),
+      this._abortableSwarmPeers,
       pull.drain(({ event, data }) => {
         if (event === 'add') {
           peers[data.id] = { id: data.id, bw: EmptyBandwidth }
-          bw.watch(data.id)
+          peerBw.watch(data.id)
         } else if (event === 'remove') {
           delete peers[data.id]
-          bw.unwatch(data.id)
+          peerBw.unwatch(data.id)
         }
       })
     )
 
     pull(
-      bw,
-      abortableBw,
+      nodeBandwidth(ipfs),
+      this._abortableNodeBw,
+      pull.drain(bw => this.setState({ bw }))
+    )
+
+    pull(
+      peerBw,
+      this._abortablePeerBw,
       pull.drain(({ id, bw }) => { peers[id] = { id, bw } })
     )
 
@@ -69,44 +77,49 @@ class App extends Component {
 
   componentWillUnmount () {
     clearInterval(this._interval)
-    this._abortableSwarm.abort()
-    this._abortableBw.abort()
+    this._abortableSwarmPeers.abort()
+    this._abortablePeerBw.abort()
+    this._abortableNodeBw.abort()
   }
 
   render () {
     const { peers, sort, loading } = this.state
     const sortedPeers = Object.values(peers).sort(this.getSorter(sort))
 
-    if (loading) {
-      return <p className='sans-serif f2 ma0 pv1 ph2'>Loading...</p>
-    }
-
     return (
-      <table className='sans-serif'>
-        <tr className='tl'>
-          <th className='pv1 ph2'><span className='v-mid'>ID</span></th>
-          <SortableTableHeader field='rateIn' label='Rate In' sort={sort} onClick={this.onFieldClick} />
-          <SortableTableHeader field='rateOut' label='Rate Out' sort={sort} onClick={this.onFieldClick} />
-          <SortableTableHeader field='totalIn' label='Total In' sort={sort} onClick={this.onFieldClick} />
-          <SortableTableHeader field='totalOut' label='Total Out' sort={sort} onClick={this.onFieldClick} />
-        </tr>
-        {sortedPeers.map(p => (
-          <tr key={p.id}>
-            <td className='pv1 ph2 code'>{p.id}</td>
-            <td className='pv1 ph2'>{p.bw.rateIn.toFixed(0)}</td>
-            <td className='pv1 ph2'>{p.bw.rateOut.toFixed(0)}</td>
-            <td className='pv1 ph2'>{p.bw.totalIn.toFixed(0)}</td>
-            <td className='pv1 ph2'>{p.bw.totalOut.toFixed(0)}</td>
-          </tr>
-        ))}
-      </table>
+      <div className='pa3 mw8 center'>
+        <div className='bg-white ba border-gray-muted br1 pa2' style={{ boxShadow: '0px 3px 6px 0 rgba(205,207,214,0.35)' }}>
+          {loading ? (
+            <p className='sans-serif f3 ma0 pv1 ph2 tc'>Loading...</p>
+          ) : (
+            <table className='collapse'>
+              <tr className='tl'>
+                <th className='pv2 ph3 w-100'><span className='v-mid'>Peer</span></th>
+                <SortableTableHeader field='rateIn' label='Rate In' sort={sort} onClick={this.onFieldClick} />
+                <SortableTableHeader field='rateOut' label='Rate Out' sort={sort} onClick={this.onFieldClick} />
+                <SortableTableHeader field='totalIn' label='Total In' sort={sort} onClick={this.onFieldClick} />
+                <SortableTableHeader field='totalOut' label='Total Out' sort={sort} onClick={this.onFieldClick} />
+              </tr>
+              {sortedPeers.map((p, i) => (
+                <tr key={p.id} className={i % 2 ? 'bg-snow-muted' : ''}>
+                  <td className='pv2 ph3 monospace'>{p.id}</td>
+                  <td className='pv2 ph3'>{p.bw.rateIn.toFixed(0)}</td>
+                  <td className='pv2 ph3'>{p.bw.rateOut.toFixed(0)}</td>
+                  <td className='pv2 ph3'>{p.bw.totalIn.toFixed(0)}</td>
+                  <td className='pv2 ph3'>{p.bw.totalOut.toFixed(0)}</td>
+                </tr>
+              ))}
+            </table>
+          )}
+        </div>
+      </div>
     )
   }
 }
 
 function SortableTableHeader ({ field, label, sort, onClick }) {
   return (
-    <th className='pv1 ph2 pointer underline-hover' onClick={onClick} data-field={field}>
+    <th className='pv2 ph3 pointer underline-hover nowrap' onClick={onClick} data-field={field}>
       <span className='v-mid'>{label}</span>
       <SortArrow field={field} sortField={sort.field} direction={sort.direction} />
     </th>

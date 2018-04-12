@@ -1,7 +1,7 @@
 import pull from 'pull-stream'
 import queue from 'async.queue'
 
-export function swarm (ipfs, opts) {
+export function swarmPeers (ipfs, opts) {
   opts = opts || {}
   opts.interval = opts.interval || 5000
 
@@ -50,7 +50,37 @@ export function swarm (ipfs, opts) {
   return pull(source, pull.flatten())
 }
 
-export function bandwidth (ipfs, opts) {
+export function nodeBandwidth (ipfs, opts) {
+  opts = opts || {}
+  opts.interval = opts.interval || 5000
+
+  let first = true
+
+  const source = (end, cb) => {
+    if (end) return cb(end)
+
+    const getBandwidth = () => {
+      ipfs.stats.bw((err, bw) => {
+        if (err) {
+          console.error('Failed to fetch node bandwidth', err)
+          return cb()
+        }
+        cb(null, bw)
+      })
+    }
+
+    if (first) {
+      first = false
+      return getBandwidth()
+    }
+
+    setTimeout(getBandwidth, opts.interval)
+  }
+
+  return pull(source, pull.flatten())
+}
+
+export function peerBandwidth (ipfs, opts) {
   opts = opts || {}
   opts.interval = opts.interval || 5000
   opts.concurrency = opts.concurrency || 5
