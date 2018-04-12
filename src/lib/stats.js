@@ -1,5 +1,6 @@
 import pull from 'pull-stream'
 import queue from 'async.queue'
+import Big from 'big.js'
 
 export function swarmPeers (ipfs, opts) {
   opts = opts || {}
@@ -59,15 +60,7 @@ export function nodeBandwidth (ipfs, opts) {
   const source = (end, cb) => {
     if (end) return cb(end)
 
-    const getBandwidth = () => {
-      ipfs.stats.bw((err, bw) => {
-        if (err) {
-          console.error('Failed to fetch node bandwidth', err)
-          return cb()
-        }
-        cb(null, bw)
-      })
-    }
+    const getBandwidth = () => ipfs.stats.bw(cb)
 
     if (first) {
       first = false
@@ -77,7 +70,7 @@ export function nodeBandwidth (ipfs, opts) {
     setTimeout(getBandwidth, opts.interval)
   }
 
-  return pull(source, pull.flatten())
+  return source
 }
 
 export function peerBandwidth (ipfs, opts) {
@@ -138,3 +131,10 @@ export function peerBandwidth (ipfs, opts) {
 
   return source
 }
+
+export const EmptyBandwidth = Object.freeze({
+  rateIn: Big(0),
+  rateOut: Big(0),
+  totalIn: Big(0),
+  totalOut: Big(0)
+})

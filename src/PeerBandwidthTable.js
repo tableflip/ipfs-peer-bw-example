@@ -2,21 +2,14 @@
 import { h, Component } from 'preact'
 import pull from 'pull-stream'
 import Abortable from 'pull-abortable'
-import Big from 'big.js'
-import { swarmPeers, peerBandwidth } from './lib/stats'
-
-const EmptyBandwidth = {
-  rateIn: Big(0),
-  rateOut: Big(0),
-  totalIn: Big(0),
-  totalOut: Big(0)
-}
+import { swarmPeers, peerBandwidth, EmptyBandwidth } from './lib/stats'
 
 export default class PeerBandwidthTable extends Component {
-  constructor (props) {
-    super(props)
-    this.state = { peers: {}, sort: { field: 'rateOut', direction: -1 }, loading: true }
-    this.onFieldClick = this.onFieldClick.bind(this)
+  state = {
+    peers: {},
+    sort: { field: 'rateOut', direction: -1 },
+    showAll: false,
+    loading: true
   }
 
   componentWillMount () {
@@ -59,12 +52,16 @@ export default class PeerBandwidthTable extends Component {
     }
   }
 
-  onFieldClick (e) {
+  onFieldClick = (e) => {
     this.setState(({ sort }) => {
       const field = e.currentTarget.getAttribute('data-field')
       const direction = sort.field === field ? -sort.direction : -1
       return { sort: { field, direction } }
     })
+  }
+
+  onShowAllClick = () => {
+    this.setState({ showAll: true })
   }
 
   componentWillUnmount () {
@@ -74,30 +71,38 @@ export default class PeerBandwidthTable extends Component {
   }
 
   render () {
-    const { peers, sort, loading } = this.state
+    const { peers, sort, loading, showAll } = this.state
     const sortedPeers = Object.values(peers).sort(this.getSorter(sort))
+
+    const visiblePeers = showAll ? sortedPeers : sortedPeers.slice(0, 25)
+    const hiddenPeers = showAll ? [] : sortedPeers.slice(25)
 
     return loading ? (
       <p className='sans-serif f3 ma0 pv1 ph2 tc'>Loading...</p>
     ) : (
-      <table className='collapse'>
-        <tr className='tl'>
-          <th className='pv2 ph3 w-100'><span className='v-mid'>Peer</span></th>
-          <SortableTableHeader field='rateIn' label='Rate In' sort={sort} onClick={this.onFieldClick} />
-          <SortableTableHeader field='rateOut' label='Rate Out' sort={sort} onClick={this.onFieldClick} />
-          <SortableTableHeader field='totalIn' label='Total In' sort={sort} onClick={this.onFieldClick} />
-          <SortableTableHeader field='totalOut' label='Total Out' sort={sort} onClick={this.onFieldClick} />
-        </tr>
-        {sortedPeers.map((p, i) => (
-          <tr key={p.id} className={i % 2 ? 'bg-snow-muted' : ''}>
-            <td className='pv2 ph3 monospace'>{p.id}</td>
-            <td className='pv2 ph3'>{p.bw.rateIn.toFixed(0)}</td>
-            <td className='pv2 ph3'>{p.bw.rateOut.toFixed(0)}</td>
-            <td className='pv2 ph3'>{p.bw.totalIn.toFixed(0)}</td>
-            <td className='pv2 ph3'>{p.bw.totalOut.toFixed(0)}</td>
+      <div>
+        <table className='collapse'>
+          <tr className='tl'>
+            <th className='pv2 ph3 w-100'><span className='v-mid'>Peer</span></th>
+            <SortableTableHeader field='rateIn' label='Rate In' sort={sort} onClick={this.onFieldClick} />
+            <SortableTableHeader field='rateOut' label='Rate Out' sort={sort} onClick={this.onFieldClick} />
+            <SortableTableHeader field='totalIn' label='Total In' sort={sort} onClick={this.onFieldClick} />
+            <SortableTableHeader field='totalOut' label='Total Out' sort={sort} onClick={this.onFieldClick} />
           </tr>
-        ))}
-      </table>
+          {visiblePeers.map((p, i) => (
+            <tr key={p.id} className={i % 2 ? 'bg-snow-muted' : ''}>
+              <td className='pv2 ph3 monospace'>{p.id}</td>
+              <td className='pv2 ph3'>{p.bw.rateIn.toFixed(0)}</td>
+              <td className='pv2 ph3'>{p.bw.rateOut.toFixed(0)}</td>
+              <td className='pv2 ph3'>{p.bw.totalIn.toFixed(0)}</td>
+              <td className='pv2 ph3'>{p.bw.totalOut.toFixed(0)}</td>
+            </tr>
+          ))}
+        </table>
+        {!showAll && hiddenPeers.length ? (
+          <p className='sans-serif f5 ma0 pv3 ph2 tc pointer underline-hover navy-muted' onClick={this.onShowAllClick}>...and {hiddenPeers.length} more</p>
+        ) : null}
+      </div>
     )
   }
 }
