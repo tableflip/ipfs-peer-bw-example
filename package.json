@@ -4,6 +4,7 @@
   "description": "A list of peers eating your bandwidth",
   "main": "index.js",
   "scripts": {
+    "start": "ecstatic dist",
     "build": "run-s build:*",
     "build:copy": "run-p build:copy:*",
     "build:copy:html": "shx mkdir -p dist && shx cp src/index.html dist/index.html",
