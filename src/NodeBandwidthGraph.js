@@ -4,10 +4,17 @@ import pull from 'pull-stream'
 import Abortable from 'pull-abortable'
 import { Line } from 'preact-chartjs-2'
 import bytes from 'bigbytes'
+import simplify from 'simplify-js'
 import { nodeBandwidth, EmptyBandwidth } from './lib/stats'
 
 export default class NodeBandwidthGraph extends Component {
-  state = { bw: EmptyBandwidth, chartData: [] }
+  state = { bw: EmptyBandwidth, rawData: [], chartData: [] }
+
+  static defaultProps = {
+    windowSize: 1000 * 60 * 60 * 24, // Only graph up to 1 day of data
+    simplifyTolerance: 5000, // Simplify 5KB variations away
+    animatedPoints: 500 // Only animate for the first 500 points
+  }
 
   componentWillMount () {
     const { ipfs } = this.props
@@ -21,13 +28,16 @@ export default class NodeBandwidthGraph extends Component {
 
         this.setState(({ bw, chartData }) => {
           const total = parseInt(nextBw.rateIn.add(nextBw.rateOut).toFixed(0))
+          const now = Date.now()
 
-          // If the total didn't change, don't add another data point
-          if (chartData.length && total === chartData[chartData.length - 1][1]) {
-            return { bw: nextBw }
-          }
+          chartData.push({ x: Date.now(), y: total })
 
-          return { bw: nextBw, chartData: chartData.concat({ x: new Date(), y: total }).slice(-1000) }
+          const startIndex = chartData.findIndex(d => d.x >= now - this.props.windowSize)
+          if (startIndex > 0) chartData.splice(0, startIndex)
+
+          chartData = simplify(chartData, this.props.simplifyTolerance, true)
+
+          return { bw: nextBw, chartData }
         })
       }, err => {
         if (err) this.setState({ err })
@@ -50,15 +60,16 @@ export default class NodeBandwidthGraph extends Component {
       )
     }
 
-    if (chartData.length < 2) {
+    if (!chartData.length) {
       return <p className='sans-serif f3 ma0 pv1 ph2 tc'>Loading...</p>
     }
 
     const dataset = {
-      label: 'Total Bandwidth',
+      label: 'Total bandwidth',
       data: chartData,
       borderColor: '#69c4cd',
-      backgroundColor: '#9ad4db'
+      backgroundColor: '#9ad4db',
+      cubicInterpolationMode: 'monotone'
     }
 
     const options = {
@@ -76,6 +87,10 @@ export default class NodeBandwidthGraph extends Component {
         display: true,
         position: 'bottom',
         reverse: true
+      },
+      animation: {
+        // Only animate the 500 points
+        duration: chartData.length <= this.props.animatedPoints ? 1000 : 0
       }
     }
 

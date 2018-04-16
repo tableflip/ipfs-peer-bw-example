@@ -38,6 +38,7 @@
     "preact-chartjs-2": "^1.0.3",
     "pull-abortable": "^4.1.1",
     "pull-stream": "^3.6.7",
+    "simplify-js": "^1.2.3",
     "tachyons": "^4.9.1",
     "window.ipfs-fallback": "^1.0.0"
   },
