@@ -69,6 +69,7 @@ export default class NodeBandwidthGraph extends Component {
       data: chartData,
       borderColor: '#69c4cd',
       backgroundColor: '#9ad4db',
+      pointRadius: 2,
       cubicInterpolationMode: 'monotone'
     }
 
