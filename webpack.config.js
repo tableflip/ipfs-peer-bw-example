@@ -10,7 +10,18 @@ module.exports = {
         loader: 'babel-loader',
         options: {
           presets: [
-            ['@babel/preset-env', { browsers: ['last 2 versions'] }]
+            [
+              '@babel/preset-env',
+              {
+                targets: {
+                  browsers: [
+                    '>0.25%',
+                    'not ie 11',
+                    'not op_mini all'
+                  ]
+                }
+              }
+            ]
           ],
           plugins: [
             '@babel/plugin-proposal-object-rest-spread',
